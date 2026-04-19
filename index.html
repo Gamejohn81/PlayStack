@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>PlayStack</title>
+<style>
+:root{--bg:#0a0a0b;--surface:#141416;--surface-2:#1c1c1f;--border:#2a2a2e;--text:#f4f4f5;--text-dim:#a1a1aa;--accent:#3b82f6;--accent-2:#2563eb;--success:#22c55e;--warn:#f59e0b;--danger:#ef4444;--radius:12px}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,sans-serif}
+.app{max-width:640px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column}
+header{padding:16px;background:var(--surface);border-bottom:1px solid var(--border)}
+.header-row{display:flex;justify-content:space-between;align-items:center}
+h1{font-size:20px;margin:0;font-weight:700}
+.tabs{display:flex;gap:8px;margin-top:12px;overflow-x:auto}
+.tab{padding:8px 14px;background:var(--surface-2);border:1px solid var(--border);border-radius:999px;font-size:14px;color:var(--text-dim);cursor:pointer}
+.tab.active{background:var(--accent);color:white}
+main{flex:1;padding:16px}
+.toolbar{display:flex;gap:8px;margin-bottom:16px}
+button{appearance:none;border:1px solid var(--border);background:var(--surface-2);color:var(--text);padding:10px 14px;border-radius:var(--radius);font-size:14px;font-weight:600;cursor:pointer}
+.btn-primary{background:var(--accent);color:white}
+input,select,textarea{width:100%;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:16px}
+.grid{display:grid;gap:12px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px}
+.game-title{font-size:16px;font-weight:700;margin:0 0 6px}
+.game-meta{font-size:13px;color:var(--text-dim);display:flex;gap:12px;margin-bottom:10px}
+.badge{font-size:11px;padding:3px 8px;border-radius:6px;background:var(--surface-2)}
+.card-actions{display:flex;gap:8px;margin-top:12px}
+.card-actions button{flex:1;padding:8px;font-size:13px}
+.btn-danger{background:var(--danger);color:white}
+.empty{text-align:center;padding:48px 16px;color:var(--text-dim)}
+dialog{border:none;border-radius:16px;padding:0;background:var(--surface);color:var(--text);width:min(560px,90vw)}
+dialog::backdrop{background:rgba(0,0,0,0.6)}
+.modal-head{padding:16px;border-bottom:1px solid var(--border);font-weight:700;font-size:18px}
+.modal-body{padding:16px}
+.modal-foot{padding:16px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text-dim)}
+.row{display:flex;gap:10px}
+.row>*{flex:1}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px;text-align:center}
+.stat-num{font-size:24px;font-weight:800;margin-bottom:4px}
+.stat-label{font-size:12px;color:var(--text-dim)}
+footer{padding:16px;text-align:center;font-size:12px;color:var(--text-dim);border-top:1px solid var(--border)}
+.screenshot-mode.blur{filter:blur(8px)}
+.toggle{display:flex;align-items:center;gap:10px}
+.toggle input{width:44px;height:24px;appearance:none;background:var(--surface-2);border-radius:999px;position:relative;border:1px solid var(--border)}
+.toggle input:checked{background:var(--accent)}
+.toggle input::after{content:'';position:absolute;width:18px;height:18px;background:white;border-radius:50%;top:2px;left:2px;transition:0.2s}
+.toggle input:checked::after{left:22px}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+<header>
+<div class="header-row">
+<h1>PlayStack</h1>
+<div class="toggle">
+<span>Screenshot Mode</span>
+<input type="checkbox" id="screenshotToggle">
+</div>
+</div>
+<div class="tabs" id="tabs">
+<div class="tab active" data-filter="all">All</div>
+<div class="tab" data-filter="playing">Playing</div>
+<div class="tab" data-filter="backlog">Backlog</div>
+<div class="tab" data-filter="done">Completed</div>
+</div>
+</header>
+<main>
+<div class="stats" id="stats"></div>
+<div class="toolbar">
+<button class="btn-primary" id="addBtn">+ Add Game</button>
+<button id="exportBtn">Export</button>
+</div>
+<div class="grid" id="list"></div>
+<div class="empty" id="empty">
+<h3>No games yet</h3>
+<p>Tap + Add Game to start</p>
+</div>
+</main>
+<footer>
+<div>PlayStack v1.0 — All data stored locally</div>
+</footer>
+</div>
+
+<dialog id="gameModal">
+<form method="dialog" id="gameForm">
+<div class="modal-head" id="modalTitle">Add Game</div>
+<div class="modal-body">
+<div class="field">
+<label>Title</label>
+<input required id="f_title">
+</div>
+<div class="row">
+<div class="field">
+<label>Platform</label>
+<input id="f_platform">
+</div>
+<div class="field">
+<label>Status</label>
+<select id="f_status">
+<option value="backlog">Backlog</option>
+<option value="playing">Playing</option>
+<option value="done">Completed</option>
+</select>
+</div>
+</div>
+<div class="field">
+<label>Hours</label>
+<input type="number" id="f_hours" min="0" step="0.5">
+</div>
+</div>
+<div class="modal-foot">
+<button type="button" id="cancelBtn">Cancel</button>
+<button type="submit" class="btn-primary">Save</button>
+</div>
+</form>
+</dialog>
+
+<script>
+const KEY='playstack_v1';
+let state={games:[],filter:'all',editing:null,screenshot:false};
+
+function load(){
+  try{state.games=JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){state.games=[]}
+  state.screenshot=localStorage.getItem(KEY+'_ss')==='1';
+  document.getElementById('screenshotToggle').checked=state.screenshot;
+  updateScreenshot();
+}
+
+function save(){
+  localStorage.setItem(KEY,JSON.stringify(state.games));
+  localStorage.setItem(KEY+'_ss',state.screenshot?'1':'0');
+}
+
+function uid(){return Date.now().toString(36)+Math.random().toString(36).substr(2)}
+
+function render(){
+  const filtered=state.games.filter(g=>state.filter==='all'||g.status===state.filter);
+  document.getElementById('list').innerHTML=filtered.map(g=>`
+    <div class="card">
+      <div class="game-title blur">${g.title}</div>
+      <div class="game-meta">
+        <span class="badge">${g.status}</span>
+        ${g.platform?`<span>${g.platform}</span>`:''}
+        ${g.hours?`<span>${g.hours}h</span>`:''}
+      </div>
+      <div class="card-actions">
+        <button onclick="editGame('${g.id}')">Edit</button>
+        <button class="btn-danger" onclick="delGame('${g.id}')">Delete</button>
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('empty').style.display=filtered.length?'none':'block';
+  renderStats();
+}
+
+function renderStats(){
+  const s={
+    playing:state.games.filter(g=>g.status==='playing').length,
+    backlog:state.games.filter(g=>g.status==='backlog').length,
+    done:state.games.filter(g=>g.status==='done').length
+  };
+  const hours=state.games.reduce((a,g)=>a+(parseFloat(g.hours)||0),0);
+  document.getElementById('stats').innerHTML=`
+    <div class="stat"><div class="stat-num">${s.playing}</div><div class="stat-label">Playing</div></div>
+    <div class="stat"><div class="stat-num">${s.backlog}</div><div class="stat-label">Backlog</div></div>
+    <div class="stat"><div class="stat-num">${s.done}</div><div class="stat-label">Done</div></div>
+    <div class="stat"><div class="stat-num">${Math.round(hours)}h</div><div class="stat-label">Total</div></div>
+  `;
+}
+
+function updateScreenshot(){
+  document.getElementById('app').classList.toggle('screenshot-mode',state.screenshot);
+}
+
+function openModal(game){
+  state.editing=game?game.id:null;
+  document.getElementById('modalTitle').textContent=game?'Edit Game':'Add Game';
+  document.getElementById('f_title').value=game?game.title:'';
+  document.getElementById('f_platform').value=game?game.platform:'';
+  document.getElementById('f_status').value=game?game.status:'backlog';
+  document.getElementById('f_hours').value=game?game.hours:'';
+  document.getElementById('gameModal').showModal();
+}
+
+function editGame(id){
+  openModal(state.games.find(g=>g.id===id));
+}
+
+function delGame(id){
+  if(confirm('Delete this game?')){
+    state.games=state.games.filter(g=>g.id!==id);
+    save();render();
+  }
+}
+
+document.getElementById('addBtn').onclick=()=>openModal();
+document.getElementById('cancelBtn').onclick=()=>document.getElementById('gameModal').close();
+document.getElementById('gameForm').onsubmit=(e)=>{
+  e.preventDefault();
+  const data={
+    id:state.editing||uid(),
+    title:document.getElementById('f_title').value.trim(),
+    platform:document.getElementById('f_platform').value.trim(),
+    status:document.getElementById('f_status').value,
+    hours:document.getElementById('f_hours').value
+  };
+  if(!data.title)return;
+  if(state.editing){
+    const i=state.games.findIndex(g=>g.id===state.editing);
+    state.games[i]={...state.games[i],...data};
+  }else{
+    state.games.unshift(data);
+  }
+  save();render();document.getElementById('gameModal').close();
+};
+
+document.getElementById('screenshotToggle').onchange=(e)=>{
+  state.screenshot=e.target.checked;
+  updateScreenshot();save();
+};
+
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active');
+  state.filter=t.dataset.filter;
+  render();
+});
+
+document.getElementById('exportBtn').onclick=()=>{
+  const blob=new Blob([JSON.stringify(state.games,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download='playstack.json';a.click();
+};
+
+load();render();
+</script>
+</body>
+</html>
