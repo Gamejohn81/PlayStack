@@ -1,2 +1,2 @@
-# index.html
+# PlayStack
 Game and backlog tracker for gamers 
